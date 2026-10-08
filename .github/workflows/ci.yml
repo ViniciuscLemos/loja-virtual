@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build -w server
+
+  # Os testes usam o PGlite. Aqui a API sobe com um Postgres de verdade
+  # pra garantir que as migrações e o cadastro funcionam nele também.
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: loja
+          POSTGRES_PASSWORD: loja
+          POSTGRES_DB: loja
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U loja"
+          --health-interval 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://loja:loja@localhost:5432/loja
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w server
+      - name: Sobe a API e testa o cadastro
+        working-directory: server
+        run: |
+          NODE_ENV=production node dist/server.js &
+          for i in $(seq 1 30); do curl -sf localhost:3333/api/saude && break; sleep 1; done
+          curl -sf -X POST localhost:3333/api/auth/cadastro \
+            -H 'Content-Type: application/json' \
+            -d '{"nome":"Teste CI","email":"ci@exemplo.com","senha":"senha-forte-123"}'
+          npm run tornar-admin -- ci@exemplo.com
