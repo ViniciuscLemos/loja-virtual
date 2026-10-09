@@ -1,6 +1,7 @@
 {
   "name": "online-store",
   "private": true,
+  "license": "MIT",
   "workspaces": [
     "server",
     "web"
