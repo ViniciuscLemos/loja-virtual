@@ -1,4 +1,10 @@
+import type { Order, OrderItem } from '../db/schema.js';
 import type { Email } from './mailer.js';
+
+export const money = (cents: number) =>
+  (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+const shortId = (id: string) => id.slice(0, 8).toUpperCase();
 
 const escape = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -55,5 +61,41 @@ export function passwordChanged(name: string, to: string): Email {
       `Hi ${escape(name)}!`,
       "The password of your account was just changed and every session was logged out. If it wasn't you, reset it again right away.",
     ]),
+  };
+}
+
+export function orderConfirmation(name: string, to: string, order: Order & { items: OrderItem[] }, appUrl: string): Email {
+  const url = `${appUrl}/orders/${order.id}`;
+  const lines = order.items.map((i) => `${i.quantity}x ${i.name}: ${money(i.unitPriceCents * i.quantity)}`);
+  const rows = order.items
+    .map(
+      (i) =>
+        `<tr><td style="padding:6px 0">${i.quantity}x ${escape(i.name)}</td><td style="padding:6px 0;text-align:right">${money(i.unitPriceCents * i.quantity)}</td></tr>`,
+    )
+    .join('');
+  const table = `<table style="width:100%;border-collapse:collapse;margin:0 0 14px">${rows}
+    <tr><td style="padding:8px 0;border-top:1px solid #e5e7eb"><b>Total</b></td><td style="padding:8px 0;border-top:1px solid #e5e7eb;text-align:right"><b>${money(order.totalCents)}</b></td></tr></table>`;
+  return {
+    to,
+    subject: `Order #${shortId(order.id)} confirmed`,
+    text: `Hi ${name}!\n\nThanks for your order. The payment went through and we're getting it ready.\n\n${lines.join('\n')}\nTotal: ${money(order.totalCents)}\n\nFollow your order: ${url}`,
+    html: layout(
+      `Order #${shortId(order.id)} confirmed`,
+      [`Hi ${escape(name)}!`, "Thanks for your order. The payment went through and we're getting it ready.", table],
+      { label: 'See my order', url },
+    ),
+  };
+}
+
+export function orderShipped(name: string, to: string, order: Order, appUrl: string): Email {
+  const url = `${appUrl}/orders/${order.id}`;
+  return {
+    to,
+    subject: `Order #${shortId(order.id)} shipped`,
+    text: `Hi ${name}!\n\nYour order #${shortId(order.id)} is on its way.\n\nSee it here: ${url}`,
+    html: layout(`Order #${shortId(order.id)} shipped`, [`Hi ${escape(name)}!`, 'Your order is on its way.'], {
+      label: 'See my order',
+      url,
+    }),
   };
 }

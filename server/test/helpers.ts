@@ -5,19 +5,27 @@ import { createApp } from '../src/app.js';
 import { connectPglite, type Connection } from '../src/db/index.js';
 import { outboxMailer, type Mailer } from '../src/email/mailer.js';
 import { users } from '../src/db/schema.js';
+import { demoProvider, type PaymentProvider } from '../src/payments/provider.js';
 
 export const APP_URL = 'http://localhost:5173';
 
 // Each test file gets an in-memory Postgres (PGlite) with the migrations
 // applied, and the tables are cleaned before each test.
-export function setupDatabase() {
-  const ctx = {} as { connection: Connection; app: ReturnType<typeof createApp>; mailer: Mailer };
+export function setupDatabase(options: { payments?: () => PaymentProvider } = {}) {
+  const ctx = {} as { connection: Connection; app: ReturnType<typeof createApp>; mailer: Mailer; payments: PaymentProvider };
 
   beforeAll(async () => {
     ctx.connection = connectPglite();
     await ctx.connection.migrate();
     ctx.mailer = outboxMailer();
-    ctx.app = createApp({ db: ctx.connection.db, appUrl: APP_URL, mailer: ctx.mailer, attemptLimit: 1000 });
+    ctx.payments = options.payments?.() ?? demoProvider(APP_URL);
+    ctx.app = createApp({
+      db: ctx.connection.db,
+      appUrl: APP_URL,
+      mailer: ctx.mailer,
+      payments: ctx.payments,
+      attemptLimit: 1000,
+    });
   });
 
   beforeEach(async () => {
@@ -48,6 +56,16 @@ export function linkFromEmail(mailer: Mailer, to: string) {
   const url = /https?:\/\/\S+token=[\w-]+/.exec(last?.text ?? '')?.[0];
   if (!url) throw new Error(`No link in the email to ${to}`);
   return { url, token: new URL(url).searchParams.get('token')! };
+}
+
+// a customer with the email already confirmed, ready to buy
+export async function verifiedCustomer(
+  ctx: { app: ReturnType<typeof createApp>; connection: Connection },
+  data: Partial<{ name: string; email: string }> = {},
+) {
+  const account = await register(ctx.app, data);
+  await ctx.connection.db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.email, account.email));
+  return account;
 }
 
 export async function makeAdmin(ctx: { connection: Connection }, email: string) {

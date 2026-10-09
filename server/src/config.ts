@@ -11,11 +11,24 @@ const schema = z.object({
   // without SMTP_URL the emails stay in memory and show up in the store's demo inbox
   SMTP_URL: z.string().optional(),
   MAIL_FROM: z.string().default('Online Store <no-reply@example.com>'),
+  // without the Stripe keys the store uses a demo checkout page
+  STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
+  // adds the sample products on startup (used by the demo deploy)
+  SEED_SAMPLE_PRODUCTS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 const result = schema.safeParse(process.env);
 if (!result.success) {
   console.error('Invalid environment variables:', z.flattenError(result.error).fieldErrors);
+  process.exit(1);
+}
+
+if (result.data.STRIPE_SECRET_KEY && !result.data.STRIPE_WEBHOOK_SECRET) {
+  console.error('STRIPE_WEBHOOK_SECRET is required when STRIPE_SECRET_KEY is set.');
   process.exit(1);
 }
 

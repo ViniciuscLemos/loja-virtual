@@ -1,8 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const role = pgEnum('role', ['customer', 'admin']);
 export const tokenType = pgEnum('token_type', ['verify_email', 'reset_password']);
+export const orderStatus = pgEnum('order_status', ['pending', 'paid', 'shipped', 'canceled']);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -75,7 +76,65 @@ export const products = pgTable(
   ],
 );
 
+// The cart lives in the database, so it follows the person between devices
+export const cartItems = pgTable(
+  'cart_items',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    quantity: integer('quantity').notNull(),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.productId] }), check('cart_quantity_positive', sql`${t.quantity} > 0`)],
+);
+
+export const orders = pgTable(
+  'orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    status: orderStatus('status').notNull().default('pending'),
+    totalCents: integer('total_cents').notNull(),
+    // id of the checkout session on Stripe (or on the demo checkout)
+    paymentId: text('payment_id').unique(),
+    // so a pending order can go back to the payment page
+    paymentUrl: text('payment_url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    shippedAt: timestamp('shipped_at', { withTimezone: true }),
+    canceledAt: timestamp('canceled_at', { withTimezone: true }),
+  },
+  (t) => [index('orders_user_idx').on(t.userId), index('orders_status_idx').on(t.status)],
+);
+
+// name and price are copied into the order, so changing the product later
+// doesn't change what the customer paid
+export const orderItems = pgTable(
+  'order_items',
+  {
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id),
+    name: text('name').notNull(),
+    unitPriceCents: integer('unit_price_cents').notNull(),
+    quantity: integer('quantity').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.orderId, t.productId] })],
+);
+
 export type User = typeof users.$inferSelect;
+export type Order = typeof orders.$inferSelect;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type OrderStatus = (typeof orderStatus.enumValues)[number];
 export type Product = typeof products.$inferSelect;
 export type TokenType = (typeof tokenType.enumValues)[number];
 export type Role = (typeof role.enumValues)[number];
