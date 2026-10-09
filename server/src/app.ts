@@ -7,6 +7,7 @@ import { authRoutes } from './auth/routes.js';
 import type { Db } from './db/index.js';
 import type { Mailer } from './email/mailer.js';
 import { HttpError, handleErrors, notFound } from './lib/errors.js';
+import { adminProductRoutes, productRoutes } from './products/routes.js';
 
 export interface AppOptions {
   db: Db;
@@ -50,6 +51,8 @@ export function createApp({ db, appUrl, mailer, attemptLimit = 10 }: AppOptions)
     if (!mailer.inbox) throw notFound('Inbox');
     res.json({ emails: mailer.inbox(req.user!.email) });
   });
+  app.use('/api/products', productRoutes(db));
+  app.use('/api/admin/products', adminProductRoutes(db));
   app.use('/api/admin', adminRoutes(db));
 
   app.use('/api', (_req, res) => {

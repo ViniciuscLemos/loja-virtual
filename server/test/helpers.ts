@@ -21,7 +21,7 @@ export function setupDatabase() {
   });
 
   beforeEach(async () => {
-    await ctx.connection.db.execute(sql`truncate table users cascade`);
+    await ctx.connection.db.execute(sql`truncate table users, products cascade`);
   });
 
   afterAll(async () => {
