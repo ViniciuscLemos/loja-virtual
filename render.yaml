@@ -17,6 +17,9 @@ services:
         value: production
       - key: SEED_SAMPLE_PRODUCTS
         value: "true"
+      # the free instance has 512 MB and no persistent disk, so the demo database lives in memory
+      - key: PGLITE_DIR
+        value: memory://
       # optional, each one turns a demo part into the real thing
       - key: DATABASE_URL
         sync: false
