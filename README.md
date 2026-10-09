@@ -107,7 +107,7 @@ npm test
 
 Each test file starts its own in-memory Postgres and applies the migrations, so the tests run real SQL with no database mocks and no Docker. The Stripe tests use the real Stripe library to sign and verify the webhooks; only the call that creates the checkout session is faked. On GitHub Actions there's a second job that builds everything and starts the API on a normal PostgreSQL.
 
-There are also end to end tests with Playwright: a real browser signs up, confirms the email in the demo inbox, adds things to the cart, pays and checks the order, on a desktop and on a phone screen. They run on the built store, so build first:
+There are also end to end tests with Playwright: a real browser signs up, confirms the email in the demo inbox, adds things to the cart, pays and checks the order, on a desktop and on a phone screen. Another Playwright file runs [axe](https://github.com/dequelabs/axe-core) on every page, logged in and out, in light and dark mode, and fails if it finds an accessibility problem (contrast, missing labels, alt text...). They run on the built store, so build first:
 
 ```bash
 npm run build

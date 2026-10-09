@@ -3,7 +3,7 @@
   --bg: #f6f7fb;
   --card: #fff;
   --text: #111827;
-  --muted: #6b7280;
+  --muted: #5d6472;
   --border: #e5e7eb;
   --soft: #eef0f6;
   --accent: #4f46e5;
@@ -61,6 +61,14 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* a link in the middle of a sentence is underlined, so it doesn't depend only on the color */
+p a,
+.banner a,
+.footer a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 h1 {

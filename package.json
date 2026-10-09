@@ -15,6 +15,7 @@
     "typecheck": "npm run typecheck -w server"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.64.0",
     "concurrently": "^10.0.6"
   }
