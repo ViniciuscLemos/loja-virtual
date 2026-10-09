@@ -6,7 +6,7 @@ A full e-commerce: catalog, cart, Stripe payments, accounts with permissions (cu
 
 **Try it here:** https://online-store-6ogi.onrender.com
 
-The live version runs in demo mode (more on that below): the payment is a fake checkout page and the emails show up in an Inbox page inside the store. It's on Render's free plan, so the first visit after a while can take about 50 seconds, and the data resets when the server restarts.
+The live version runs in demo mode (more on that below): the payment is a fake checkout page and the emails show up in an Inbox page inside the store. It's on Render's free plan, so the first visit after a while can take about 50 seconds.
 
 ![The store with the sample products](docs/screenshot-shop.png)
 
@@ -109,7 +109,9 @@ Each test file starts its own in-memory Postgres and applies the migrations, so 
 
 ## Deploy
 
-`render.yaml` describes the service: Render runs `npm run build` (React + TypeScript), starts the API, and the API also serves the React build, so the store and the API live on the same address. The free instance has no persistent disk, so the live demo uses PGlite and seeds the sample products on every start. Setting `DATABASE_URL`, the Stripe keys and `SMTP_URL` in Render turns each demo part into the real thing, with no code change.
+`render.yaml` describes the deploy: a Postgres database and one web service. Render runs `npm run build` (React + TypeScript), starts the API, and the API also serves the React build, so the store and the API live on the same address. The sample products are added on start (`SEED_SAMPLE_PRODUCTS`), and setting the Stripe keys and `SMTP_URL` turns each demo part into the real thing, with no code change.
+
+I first tried to deploy with PGlite to avoid a separate database, but Postgres running inside Node needs more than the 512 MB of the free instance, so the deploy uses a real Postgres (Render's free one expires after 30 days, so for something permanent the `DATABASE_URL` can point to any other Postgres, like Neon).
 
 ## API routes
 

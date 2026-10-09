@@ -1,6 +1,10 @@
-# Render config (Blueprint): one service that builds React and starts the API, which serves both.
-# Without DATABASE_URL, Stripe keys or SMTP it runs as a demo: PGlite on the instance disk
-# (it resets when the free instance restarts), demo checkout and the in-app inbox.
+# Render config (Blueprint): a free Postgres plus one service that builds React and starts the API,
+# which serves both. Without Stripe keys or SMTP the store runs as a demo: demo checkout and the in-app inbox.
+databases:
+  - name: online-store-db
+    plan: free
+    region: virginia
+
 services:
   - type: web
     name: online-store
@@ -17,12 +21,12 @@ services:
         value: production
       - key: SEED_SAMPLE_PRODUCTS
         value: "true"
-      # the free instance has 512 MB and no persistent disk, so the demo database lives in memory
-      - key: PGLITE_DIR
-        value: memory://
-      # optional, each one turns a demo part into the real thing
+      # PGlite doesn't fit in the free instance's 512 MB, so the deploy uses a real Postgres
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: online-store-db
+          property: connectionString
+      # optional, each one turns a demo part into the real thing
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
