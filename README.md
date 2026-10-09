@@ -23,7 +23,7 @@ It's the biggest project in my portfolio. I wanted something close to a real sto
 
 ## What it does
 
-**For customers:** browse and search the catalog, filter by category, add to the cart (the cart lives in the database, so it follows you between devices), check out with Stripe, follow the order status, get an email when the payment goes through and when the order ships. Confirming the email is required before the first order, and there's a "forgot my password" flow.
+**For customers:** browse and search the catalog, filter by category, add to the cart straight from the product card or from the product page (the cart lives in the database, so it follows you between devices), see more products from the same category, check out with Stripe, follow the order status on a Placed → Paid → Shipped timeline, get an email when the payment goes through and when the order ships. Confirming the email is required before the first order, and there's a "forgot my password" flow.
 
 **For admins:** create, edit and archive products, see which ones are low on stock, see every order with the customer and mark paid orders as shipped, and promote or demote other users.
 

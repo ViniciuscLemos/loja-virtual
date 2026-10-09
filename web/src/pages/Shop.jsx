@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api';
-import { Pagination, ProductCard } from '../components/common';
+import { Pagination, ProductCard, ProductGridSkeleton } from '../components/common';
 
 export default function Shop() {
   const [params, setParams] = useSearchParams();
@@ -45,8 +45,15 @@ export default function Shop() {
   return (
     <>
       <section className="hero">
-        <h1>Things for people who build things</h1>
-        <p className="muted">Mugs, apparel and desk gear. Every order is real code: Stripe, emails and stock that can run out.</p>
+        <div>
+          <h1>Things for people who build things</h1>
+          <p className="muted">Mugs, apparel and desk gear. Every order is real code: Stripe, emails and stock that can run out.</p>
+        </div>
+        <div className="hero-art" aria-hidden="true">
+          <img src="/products/mug.svg" alt="" />
+          <img src="/products/hoodie.svg" alt="" />
+          <img src="/products/plant.svg" alt="" />
+        </div>
       </section>
 
       <div className="filters">
@@ -78,7 +85,7 @@ export default function Shop() {
       </div>
 
       {error && <p className="error-box">{error}</p>}
-      {!data && !error && <p className="muted center">Loading...</p>}
+      {!data && !error && <ProductGridSkeleton />}
       {data && data.products.length === 0 && <p className="muted center">No products found.</p>}
 
       {data && (

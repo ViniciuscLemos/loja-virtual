@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api';
-import { StatusBadge } from '../components/common';
+import { Skeleton, StatusBadge } from '../components/common';
 import { date, money, shortId } from '../format';
 
 export default function Orders() {
@@ -13,7 +13,14 @@ export default function Orders() {
   }, []);
 
   if (error) return <p className="error-box">{error}</p>;
-  if (!orders) return <p className="muted center">Loading...</p>;
+  if (!orders) {
+    return (
+      <div className="stack" aria-busy="true">
+        <Skeleton width={180} height={34} />
+        {[1, 2, 3].map((i) => <Skeleton key={i} height={74} radius={14} />)}
+      </div>
+    );
+  }
 
   return (
     <>

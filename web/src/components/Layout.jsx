@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { api } from '../api';
 import { useStore } from '../store';
+import { Icon } from './common';
 
 function VerifyBanner() {
   const { user, notify } = useStore();
@@ -48,8 +49,10 @@ export default function Layout() {
             {user && <NavLink to="/orders">Orders</NavLink>}
             {user && config.email === 'outbox' && <NavLink to="/inbox">Inbox</NavLink>}
             {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
-            <NavLink to="/cart" className="cart-link">
-              Cart{cart.count > 0 && <span className="badge">{cart.count}</span>}
+            <NavLink to="/cart" className="cart-link" aria-label={`Cart, ${cart.count} item${cart.count === 1 ? '' : 's'}`}>
+              <Icon name="cart" size={20} />
+              <span className="cart-text">Cart</span>
+              {cart.count > 0 && <span className="badge">{cart.count}</span>}
             </NavLink>
             {user ? (
               <button className="link" onClick={onLogout} title={user.email}>Log out</button>

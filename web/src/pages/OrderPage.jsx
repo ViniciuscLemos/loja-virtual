@@ -1,10 +1,29 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { api } from '../api';
-import { StatusBadge } from '../components/common';
+import { Skeleton, StatusBadge } from '../components/common';
 import { date, money, shortId } from '../format';
 import { useStore } from '../store';
 import NotFound from './NotFound';
+
+// Placed -> Paid -> Shipped, with the date of each step that already happened
+function Steps({ order }) {
+  const steps = order.canceledAt
+    ? [['Placed', order.createdAt], ['Canceled', order.canceledAt]]
+    : [['Placed', order.createdAt], ['Paid', order.paidAt], ['Shipped', order.shippedAt]];
+
+  return (
+    <ol className={`steps ${order.canceledAt ? 'canceled' : ''}`}>
+      {steps.map(([label, when]) => (
+        <li key={label} className={when ? 'done' : ''}>
+          <span className="step-dot" />
+          <strong>{label}</strong>
+          <span className="muted small">{when ? date(when) : 'Not yet'}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 export default function OrderPage() {
   const { id } = useParams();
@@ -47,7 +66,15 @@ export default function OrderPage() {
     }
   }
 
-  if (order === undefined) return <p className="muted center">Loading...</p>;
+  if (order === undefined) {
+    return (
+      <div className="order-page stack" aria-busy="true">
+        <Skeleton width={220} height={34} />
+        <Skeleton height={140} radius={14} />
+        <Skeleton height={60} radius={14} />
+      </div>
+    );
+  }
   if (order === null) return <NotFound />;
 
   return (
@@ -76,12 +103,7 @@ export default function OrderPage() {
         </div>
       </div>
 
-      <ul className="timeline muted small">
-        <li>Placed on {date(order.createdAt)}</li>
-        {order.paidAt && <li>Paid on {date(order.paidAt)}</li>}
-        {order.shippedAt && <li>Shipped on {date(order.shippedAt)}</li>}
-        {order.canceledAt && <li>Canceled on {date(order.canceledAt)}</li>}
-      </ul>
+      <Steps order={order} />
 
       {order.status === 'pending' && (
         <div className="actions">
