@@ -2,11 +2,17 @@
   "name": "online-store",
   "private": true,
   "workspaces": [
-    "server"
+    "server",
+    "web"
   ],
   "scripts": {
-    "dev": "npm run dev -w server",
-    "test": "npm test -w server",
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w web && npm run build -w server",
+    "start": "npm start -w server",
+    "test": "npm test -w server && npm test -w web",
     "typecheck": "npm run typecheck -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
   }
 }

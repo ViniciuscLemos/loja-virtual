@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#e0f2fe"/>
+  <ellipse cx="200" cy="330" rx="120" ry="16" fill="#000" opacity="0.08"/>
+  <path d="M150 90l-70 40 25 50 30-15v150h130V165l30 15 25-50-70-40c-5 20-25 32-50 32s-45-12-50-32z" fill="#0ea5e9"/>
+  <text x="200" y="215" font-family="monospace" font-size="22" fill="#fff" text-anchor="middle">hello</text>
+  <text x="200" y="242" font-family="monospace" font-size="22" fill="#fff" text-anchor="middle">world</text>
+</svg>

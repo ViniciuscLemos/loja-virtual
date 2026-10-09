@@ -17,7 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build -w server
+      - run: npm run build
 
   # The tests use PGlite. Here the API starts with a real Postgres
   # to make sure the migrations and sign up work on it too.
@@ -45,7 +45,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run build -w server
+      - run: npm run build
       - name: Start the API and test sign up
         working-directory: server
         run: |

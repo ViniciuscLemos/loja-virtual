@@ -1,0 +1,28 @@
+# Render config (Blueprint): one service that builds React and starts the API, which serves both.
+# Without DATABASE_URL, Stripe keys or SMTP it runs as a demo: PGlite on the instance disk
+# (it resets when the free instance restarts), demo checkout and the in-app inbox.
+services:
+  - type: web
+    name: online-store
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: SEED_SAMPLE_PRODUCTS
+        value: "true"
+      # optional, each one turns a demo part into the real thing
+      - key: DATABASE_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SMTP_URL
+        sync: false

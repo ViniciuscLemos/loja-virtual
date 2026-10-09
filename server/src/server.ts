@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
 import { createApp } from './app.js';
 import { config } from './config.js';
 import { connectPglite, connectPostgres } from './db/index.js';
@@ -15,6 +19,13 @@ const payments = config.STRIPE_SECRET_KEY
   : demoProvider(config.APP_URL);
 
 const app = createApp({ db: connection.db, appUrl: config.APP_URL, mailer, payments });
+
+// in production the API also serves the built React app, so everything runs on one address
+const webFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');
+if (fs.existsSync(webFolder)) {
+  app.use(express.static(webFolder, { index: false }));
+  app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(webFolder, 'index.html')));
+}
 const server = app.listen(config.PORT, () => {
   const database = config.DATABASE_URL ? 'PostgreSQL' : `PGlite (${config.PGLITE_DIR})`;
   console.log(`API running at http://localhost:${config.PORT} using ${database}`);
