@@ -1,6 +1,7 @@
 import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const role = pgEnum('role', ['customer', 'admin']);
+export const tokenType = pgEnum('token_type', ['verify_email', 'reset_password']);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -28,5 +29,22 @@ export const sessions = pgTable(
   (t) => [index('sessions_user_idx').on(t.userId)],
 );
 
+// Single use tokens sent by email (account confirmation and password reset).
+// Same idea as the sessions: the email has the token, the database only has the hash.
+export const authTokens = pgTable(
+  'auth_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: tokenType('type').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('auth_tokens_user_idx').on(t.userId)],
+);
+
 export type User = typeof users.$inferSelect;
+export type TokenType = (typeof tokenType.enumValues)[number];
 export type Role = (typeof role.enumValues)[number];

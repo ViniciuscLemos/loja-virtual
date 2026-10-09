@@ -8,6 +8,9 @@ const schema = z.object({
   DATABASE_URL: z.string().optional(),
   PGLITE_DIR: z.string().default('.pglite'),
   APP_URL: z.string().url().default('http://localhost:5173'),
+  // without SMTP_URL the emails stay in memory and show up in the store's demo inbox
+  SMTP_URL: z.string().optional(),
+  MAIL_FROM: z.string().default('Online Store <no-reply@example.com>'),
 });
 
 const result = schema.safeParse(process.env);

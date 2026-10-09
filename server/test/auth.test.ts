@@ -71,7 +71,7 @@ describe('login', () => {
 
   it('blocks after too many attempts', async () => {
     const { createApp } = await import('../src/app.js');
-    const app = createApp({ db: ctx.connection.db, appUrl: APP_URL, attemptLimit: 3 });
+    const app = createApp({ db: ctx.connection.db, appUrl: APP_URL, mailer: ctx.mailer, attemptLimit: 3 });
     const attempt = () => request(app).post('/api/auth/login').send({ email: 'x@x.com', password: 'wrong' });
 
     for (let i = 0; i < 3; i++) expect((await attempt()).status).toBe(401);

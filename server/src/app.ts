@@ -2,14 +2,16 @@ import cookieParser from 'cookie-parser';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import { adminRoutes } from './admin/routes.js';
-import { loadUser } from './auth/middlewares.js';
+import { loadUser, requireLogin } from './auth/middlewares.js';
 import { authRoutes } from './auth/routes.js';
 import type { Db } from './db/index.js';
-import { HttpError, handleErrors } from './lib/errors.js';
+import type { Mailer } from './email/mailer.js';
+import { HttpError, handleErrors, notFound } from './lib/errors.js';
 
 export interface AppOptions {
   db: Db;
   appUrl: string;
+  mailer: Mailer;
   attemptLimit?: number;
 }
 
@@ -25,7 +27,7 @@ function checkOrigin(appUrl: string) {
   };
 }
 
-export function createApp({ db, appUrl, attemptLimit = 10 }: AppOptions) {
+export function createApp({ db, appUrl, mailer, attemptLimit = 10 }: AppOptions) {
   const app = express();
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -38,7 +40,16 @@ export function createApp({ db, appUrl, attemptLimit = 10 }: AppOptions) {
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
   });
-  app.use('/api/auth', authRoutes(db, { attemptLimit }));
+  // tells the front end which parts are running in demo mode
+  app.get('/api/config', (_req, res) => {
+    res.json({ email: mailer.kind });
+  });
+
+  app.use('/api/auth', authRoutes(db, { attemptLimit, mailer, appUrl }));
+  app.get('/api/inbox', requireLogin, (req, res) => {
+    if (!mailer.inbox) throw notFound('Inbox');
+    res.json({ emails: mailer.inbox(req.user!.email) });
+  });
   app.use('/api/admin', adminRoutes(db));
 
   app.use('/api', (_req, res) => {
