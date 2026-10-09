@@ -44,7 +44,7 @@ It's the biggest project in my portfolio. I wanted something close to a real sto
 - **Payments:** Stripe Checkout + webhooks
 - **Emails:** Nodemailer (any SMTP)
 - **Validation:** Zod
-- **Tests:** Vitest + Supertest, 78 integration tests running on an in-memory Postgres (PGlite)
+- **Tests:** Vitest + Supertest, 78 integration tests running on an in-memory Postgres (PGlite), and Playwright end to end tests in a real browser
 
 ## How the important parts work
 
@@ -106,6 +106,13 @@ npm test
 ```
 
 Each test file starts its own in-memory Postgres and applies the migrations, so the tests run real SQL with no database mocks and no Docker. The Stripe tests use the real Stripe library to sign and verify the webhooks; only the call that creates the checkout session is faked. On GitHub Actions there's a second job that builds everything and starts the API on a normal PostgreSQL.
+
+There are also end to end tests with Playwright: a real browser signs up, confirms the email in the demo inbox, adds things to the cart, pays and checks the order, on a desktop and on a phone screen. They run on the built store, so build first:
+
+```bash
+npm run build
+npm run test:e2e
+```
 
 ## Deploy
 
