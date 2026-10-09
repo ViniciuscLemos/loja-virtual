@@ -1,58 +1,58 @@
 import type { CookieOptions, NextFunction, Request, Response } from 'express';
-import { producao } from '../config.js';
-import type { Banco } from '../db/index.js';
-import type { Papel } from '../db/schema.js';
-import { naoAutenticado, semPermissao } from '../lib/erros.js';
-import { publico, validarSessao, type UsuarioPublico } from './sessoes.js';
+import { isProduction } from '../config.js';
+import type { Db } from '../db/index.js';
+import type { Role } from '../db/schema.js';
+import { forbidden, notAuthenticated } from '../lib/errors.js';
+import { toPublic, validateSession, type PublicUser } from './sessions.js';
 
 declare global {
   namespace Express {
     interface Request {
-      usuario?: UsuarioPublico;
-      tokenSessao?: string;
+      user?: PublicUser;
+      sessionToken?: string;
     }
   }
 }
 
-export const COOKIE_SESSAO = 'sessao';
+export const SESSION_COOKIE = 'session';
 
-// httpOnly: o JavaScript da página não consegue ler o cookie (protege contra XSS)
-// sameSite lax: o navegador não manda o cookie em POST vindo de outro site (CSRF)
-export const opcoesCookie = (expiraEm: Date): CookieOptions => ({
+// httpOnly: the page's JavaScript can't read the cookie (protects against XSS)
+// sameSite lax: the browser doesn't send the cookie on a POST coming from another site (CSRF)
+export const cookieOptions = (expiresAt: Date): CookieOptions => ({
   httpOnly: true,
   sameSite: 'lax',
-  secure: producao,
+  secure: isProduction,
   path: '/',
-  expires: expiraEm,
+  expires: expiresAt,
 });
 
-export function carregarUsuario(db: Banco) {
+export function loadUser(db: Db) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const token: string | undefined = req.cookies?.[COOKIE_SESSAO];
+    const token: string | undefined = req.cookies?.[SESSION_COOKIE];
     if (!token) return next();
 
-    const sessao = await validarSessao(db, token);
-    if (!sessao) {
-      res.clearCookie(COOKIE_SESSAO, { path: '/' });
+    const session = await validateSession(db, token);
+    if (!session) {
+      res.clearCookie(SESSION_COOKIE, { path: '/' });
       return next();
     }
 
-    req.usuario = publico(sessao.usuario);
-    req.tokenSessao = token;
-    if (sessao.renovada) res.cookie(COOKIE_SESSAO, token, opcoesCookie(sessao.expiraEm));
+    req.user = toPublic(session.user);
+    req.sessionToken = token;
+    if (session.renewed) res.cookie(SESSION_COOKIE, token, cookieOptions(session.expiresAt));
     next();
   };
 }
 
-export function exigirLogin(req: Request, _res: Response, next: NextFunction) {
-  if (!req.usuario) throw naoAutenticado();
+export function requireLogin(req: Request, _res: Response, next: NextFunction) {
+  if (!req.user) throw notAuthenticated();
   next();
 }
 
-export function exigirPapel(...papeis: Papel[]) {
+export function requireRole(...roles: Role[]) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.usuario) throw naoAutenticado();
-    if (!papeis.includes(req.usuario.papel)) throw semPermissao();
+    if (!req.user) throw notAuthenticated();
+    if (!roles.includes(req.user.role)) throw forbidden();
     next();
   };
 }

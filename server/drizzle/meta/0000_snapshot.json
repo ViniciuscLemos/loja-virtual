@@ -1,11 +1,11 @@
 {
-  "id": "f97fb59f-c0ff-4ace-be9f-36c322406685",
+  "id": "03533a06-37ae-4104-b6b8-a96f5b224035",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.sessoes": {
-      "name": "sessoes",
+    "public.sessions": {
+      "name": "sessions",
       "schema": "",
       "columns": {
         "id": {
@@ -14,20 +14,20 @@
           "primaryKey": true,
           "notNull": true
         },
-        "usuario_id": {
-          "name": "usuario_id",
+        "user_id": {
+          "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "expira_em": {
-          "name": "expira_em",
+        "expires_at": {
+          "name": "expires_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "criado_em": {
-          "name": "criado_em",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -35,11 +35,11 @@
         }
       },
       "indexes": {
-        "sessoes_usuario_idx": {
-          "name": "sessoes_usuario_idx",
+        "sessions_user_idx": {
+          "name": "sessions_user_idx",
           "columns": [
             {
-              "expression": "usuario_id",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -52,12 +52,12 @@
         }
       },
       "foreignKeys": {
-        "sessoes_usuario_id_usuarios_id_fk": {
-          "name": "sessoes_usuario_id_usuarios_id_fk",
-          "tableFrom": "sessoes",
-          "tableTo": "usuarios",
+        "sessions_user_id_users_id_fk": {
+          "name": "sessions_user_id_users_id_fk",
+          "tableFrom": "sessions",
+          "tableTo": "users",
           "columnsFrom": [
-            "usuario_id"
+            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -72,8 +72,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.usuarios": {
-      "name": "usuarios",
+    "public.users": {
+      "name": "users",
       "schema": "",
       "columns": {
         "id": {
@@ -83,8 +83,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "nome": {
-          "name": "nome",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -95,28 +95,28 @@
           "primaryKey": false,
           "notNull": true
         },
-        "senha_hash": {
-          "name": "senha_hash",
+        "password_hash": {
+          "name": "password_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "papel": {
-          "name": "papel",
-          "type": "papel",
+        "role": {
+          "name": "role",
+          "type": "role",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'cliente'"
+          "default": "'customer'"
         },
-        "email_verificado_em": {
-          "name": "email_verificado_em",
+        "email_verified_at": {
+          "name": "email_verified_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "criado_em": {
-          "name": "criado_em",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -127,8 +127,8 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "usuarios_email_unique": {
-          "name": "usuarios_email_unique",
+        "users_email_unique": {
+          "name": "users_email_unique",
           "nullsNotDistinct": false,
           "columns": [
             "email"
@@ -141,11 +141,11 @@
     }
   },
   "enums": {
-    "public.papel": {
-      "name": "papel",
+    "public.role": {
+      "name": "role",
       "schema": "public",
       "values": [
-        "cliente",
+        "customer",
         "admin"
       ]
     }

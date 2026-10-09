@@ -8,35 +8,35 @@ import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import pg from 'pg';
 import * as schema from './schema.js';
 
-// A API do drizzle é a mesma nos dois drivers, então o resto do código
-// usa esse tipo e não precisa saber se é Postgres de verdade ou PGlite.
-export type Banco = NodePgDatabase<typeof schema>;
+// The drizzle API is the same for both drivers, so the rest of the code
+// uses this type and doesn't need to know if it's real Postgres or PGlite.
+export type Db = NodePgDatabase<typeof schema>;
 
-export interface Conexao {
-  db: Banco;
-  migrar(): Promise<void>;
-  fechar(): Promise<void>;
+export interface Connection {
+  db: Db;
+  migrate(): Promise<void>;
+  close(): Promise<void>;
 }
 
-const pastaMigracoes = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../drizzle');
+const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../drizzle');
 
-export function conectarPostgres(url: string): Conexao {
+export function connectPostgres(url: string): Connection {
   const pool = new pg.Pool({ connectionString: url });
   const db = drizzlePg(pool, { schema });
   return {
     db,
-    migrar: () => migratePg(db, { migrationsFolder: pastaMigracoes }),
-    fechar: () => pool.end(),
+    migrate: () => migratePg(db, { migrationsFolder }),
+    close: () => pool.end(),
   };
 }
 
-// sem pasta = banco só na memória (usado nos testes)
-export function conectarPglite(pasta?: string): Conexao {
-  const cliente = new PGlite(pasta);
-  const db = drizzlePglite(cliente, { schema });
+// no folder = in-memory database (used in the tests)
+export function connectPglite(folder?: string): Connection {
+  const client = new PGlite(folder);
+  const db = drizzlePglite(client, { schema });
   return {
-    db: db as unknown as Banco,
-    migrar: () => migratePglite(db, { migrationsFolder: pastaMigracoes }),
-    fechar: () => cliente.close(),
+    db: db as unknown as Db,
+    migrate: () => migratePglite(db, { migrationsFolder }),
+    close: () => client.close(),
   };
 }

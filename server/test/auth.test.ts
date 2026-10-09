@@ -1,160 +1,160 @@
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { DURACAO_SESSAO } from '../src/auth/sessoes.js';
-import { sessoes, usuarios } from '../src/db/schema.js';
-import { APP_URL, cadastrar, prepararBanco } from './ajuda.js';
+import { SESSION_DURATION } from '../src/auth/sessions.js';
+import { sessions, users } from '../src/db/schema.js';
+import { APP_URL, register, setupDatabase } from './helpers.js';
 
-const ctx = prepararBanco();
+const ctx = setupDatabase();
 
-describe('cadastro', () => {
-  it('cria a conta, já deixa logado e não devolve a senha', async () => {
-    const { agente, res } = await cadastrar(ctx.app, { email: 'Ana@Exemplo.com ' });
+describe('register', () => {
+  it('creates the account, logs in right away and does not return the password', async () => {
+    const { agent, res } = await register(ctx.app, { email: 'Ana@Example.com ' });
 
     expect(res.status).toBe(201);
-    expect(res.body.usuario).toMatchObject({ nome: 'Ana Souza', email: 'ana@exemplo.com', papel: 'cliente' });
-    expect(JSON.stringify(res.body)).not.toContain('senha');
+    expect(res.body.user).toMatchObject({ name: 'Ana Souza', email: 'ana@example.com', role: 'customer' });
+    expect(JSON.stringify(res.body)).not.toContain('password');
 
     const cookie = res.headers['set-cookie']![0]!;
-    expect(cookie).toMatch(/sessao=/);
+    expect(cookie).toMatch(/session=/);
     expect(cookie).toMatch(/HttpOnly/);
     expect(cookie).toMatch(/SameSite=Lax/);
 
-    const eu = await agente.get('/api/auth/eu');
-    expect(eu.status).toBe(200);
-    expect(eu.body.usuario.email).toBe('ana@exemplo.com');
+    const me = await agent.get('/api/auth/me');
+    expect(me.status).toBe(200);
+    expect(me.body.user.email).toBe('ana@example.com');
   });
 
-  it('guarda a senha com hash', async () => {
-    await cadastrar(ctx.app);
-    const [u] = await ctx.conexao.db.select().from(usuarios);
-    expect(u!.senhaHash).not.toBe('senha-forte-123');
-    expect(u!.senhaHash).toMatch(/^\$2[aby]\$/);
+  it('stores the password as a hash', async () => {
+    await register(ctx.app);
+    const [u] = await ctx.connection.db.select().from(users);
+    expect(u!.passwordHash).not.toBe('strong-password-123');
+    expect(u!.passwordHash).toMatch(/^\$2[aby]\$/);
   });
 
-  it('não deixa cadastrar o mesmo e-mail duas vezes, mesmo com maiúsculas', async () => {
-    await cadastrar(ctx.app);
-    const { res } = await cadastrar(ctx.app, { email: 'ANA@exemplo.com' });
+  it("doesn't allow the same email twice, even with uppercase", async () => {
+    await register(ctx.app);
+    const { res } = await register(ctx.app, { email: 'ANA@example.com' });
     expect(res.status).toBe(409);
   });
 
-  it('valida os campos', async () => {
-    const { res } = await cadastrar(ctx.app, { nome: 'A', email: 'nao-e-email', senha: '123' });
+  it('validates the fields', async () => {
+    const { res } = await register(ctx.app, { name: 'A', email: 'not-an-email', password: '123' });
     expect(res.status).toBe(400);
-    expect(Object.keys(res.body.campos).sort()).toEqual(['email', 'nome', 'senha']);
+    expect(Object.keys(res.body.fields).sort()).toEqual(['email', 'name', 'password']);
   });
 });
 
 describe('login', () => {
-  it('entra com e-mail e senha certos', async () => {
-    await cadastrar(ctx.app);
-    const agente = request.agent(ctx.app);
-    const res = await agente.post('/api/auth/login').send({ email: 'ana@exemplo.com', senha: 'senha-forte-123' });
+  it('logs in with the right email and password', async () => {
+    await register(ctx.app);
+    const agent = request.agent(ctx.app);
+    const res = await agent.post('/api/auth/login').send({ email: 'ana@example.com', password: 'strong-password-123' });
     expect(res.status).toBe(200);
-    expect((await agente.get('/api/auth/eu')).status).toBe(200);
+    expect((await agent.get('/api/auth/me')).status).toBe(200);
   });
 
-  it('dá a mesma resposta pra senha errada e pra e-mail que não existe', async () => {
-    await cadastrar(ctx.app);
-    const senhaErrada = await request(ctx.app)
+  it('gives the same answer for a wrong password and for an email that does not exist', async () => {
+    await register(ctx.app);
+    const wrongPassword = await request(ctx.app)
       .post('/api/auth/login')
-      .send({ email: 'ana@exemplo.com', senha: 'errada' });
-    const semConta = await request(ctx.app)
+      .send({ email: 'ana@example.com', password: 'wrong' });
+    const noAccount = await request(ctx.app)
       .post('/api/auth/login')
-      .send({ email: 'ninguem@exemplo.com', senha: 'errada' });
+      .send({ email: 'nobody@example.com', password: 'wrong' });
 
-    expect(senhaErrada.status).toBe(401);
-    expect(semConta.status).toBe(401);
-    expect(senhaErrada.body).toEqual(semConta.body);
-    expect(senhaErrada.headers['set-cookie']).toBeUndefined();
+    expect(wrongPassword.status).toBe(401);
+    expect(noAccount.status).toBe(401);
+    expect(wrongPassword.body).toEqual(noAccount.body);
+    expect(wrongPassword.headers['set-cookie']).toBeUndefined();
   });
 
-  it('bloqueia depois de muitas tentativas', async () => {
-    const { criarApp } = await import('../src/app.js');
-    const app = criarApp({ db: ctx.conexao.db, appUrl: APP_URL, limiteTentativas: 3 });
-    const tentar = () => request(app).post('/api/auth/login').send({ email: 'x@x.com', senha: 'errada' });
+  it('blocks after too many attempts', async () => {
+    const { createApp } = await import('../src/app.js');
+    const app = createApp({ db: ctx.connection.db, appUrl: APP_URL, attemptLimit: 3 });
+    const attempt = () => request(app).post('/api/auth/login').send({ email: 'x@x.com', password: 'wrong' });
 
-    for (let i = 0; i < 3; i++) expect((await tentar()).status).toBe(401);
-    expect((await tentar()).status).toBe(429);
+    for (let i = 0; i < 3; i++) expect((await attempt()).status).toBe(401);
+    expect((await attempt()).status).toBe(429);
   });
 });
 
-describe('sessão', () => {
-  it('sem cookie não acessa /eu', async () => {
-    const res = await request(ctx.app).get('/api/auth/eu');
+describe('session', () => {
+  it("without a cookie you can't access /me", async () => {
+    const res = await request(ctx.app).get('/api/auth/me');
     expect(res.status).toBe(401);
   });
 
-  it('cookie inventado não vale', async () => {
-    const res = await request(ctx.app).get('/api/auth/eu').set('Cookie', 'sessao=token-inventado');
+  it("a made up cookie doesn't work", async () => {
+    const res = await request(ctx.app).get('/api/auth/me').set('Cookie', 'session=made-up-token');
     expect(res.status).toBe(401);
   });
 
-  it('salva só o hash do token no banco', async () => {
-    const { res } = await cadastrar(ctx.app);
-    const token = /sessao=([^;]+)/.exec(res.headers['set-cookie']![0]!)![1]!;
-    const [s] = await ctx.conexao.db.select().from(sessoes);
+  it('only stores the token hash in the database', async () => {
+    const { res } = await register(ctx.app);
+    const token = /session=([^;]+)/.exec(res.headers['set-cookie']![0]!)![1]!;
+    const [s] = await ctx.connection.db.select().from(sessions);
     expect(s!.id).not.toBe(token);
     expect(s!.id).toHaveLength(64);
   });
 
-  it('logout encerra a sessão no servidor, não só apaga o cookie', async () => {
-    const { agente, res } = await cadastrar(ctx.app);
+  it('logout ends the session on the server, not just deletes the cookie', async () => {
+    const { agent, res } = await register(ctx.app);
     const cookie = res.headers['set-cookie']![0]!.split(';')[0]!;
 
-    expect((await agente.post('/api/auth/logout')).status).toBe(204);
-    expect((await agente.get('/api/auth/eu')).status).toBe(401);
-    // mesmo quem copiou o cookie antes do logout não consegue mais usar
-    expect((await request(ctx.app).get('/api/auth/eu').set('Cookie', cookie)).status).toBe(401);
+    expect((await agent.post('/api/auth/logout')).status).toBe(204);
+    expect((await agent.get('/api/auth/me')).status).toBe(401);
+    // even someone who copied the cookie before the logout can't use it anymore
+    expect((await request(ctx.app).get('/api/auth/me').set('Cookie', cookie)).status).toBe(401);
   });
 
-  it('sessão vencida não vale e é apagada', async () => {
-    const { agente } = await cadastrar(ctx.app);
-    await ctx.conexao.db.update(sessoes).set({ expiraEm: new Date(Date.now() - 1000) });
+  it("an expired session doesn't work and gets deleted", async () => {
+    const { agent } = await register(ctx.app);
+    await ctx.connection.db.update(sessions).set({ expiresAt: new Date(Date.now() - 1000) });
 
-    expect((await agente.get('/api/auth/eu')).status).toBe(401);
-    expect(await ctx.conexao.db.select().from(sessoes)).toHaveLength(0);
+    expect((await agent.get('/api/auth/me')).status).toBe(401);
+    expect(await ctx.connection.db.select().from(sessions)).toHaveLength(0);
   });
 
-  it('renova a sessão de quem continua usando', async () => {
-    const { agente } = await cadastrar(ctx.app);
-    const quaseVencendo = new Date(Date.now() + DURACAO_SESSAO / 4);
-    await ctx.conexao.db.update(sessoes).set({ expiraEm: quaseVencendo });
+  it('renews the session of someone who keeps using the store', async () => {
+    const { agent } = await register(ctx.app);
+    const almostExpired = new Date(Date.now() + SESSION_DURATION / 4);
+    await ctx.connection.db.update(sessions).set({ expiresAt: almostExpired });
 
-    const res = await agente.get('/api/auth/eu');
+    const res = await agent.get('/api/auth/me');
     expect(res.status).toBe(200);
-    expect(res.headers['set-cookie']![0]).toMatch(/sessao=/);
-    const [s] = await ctx.conexao.db.select().from(sessoes);
-    expect(s!.expiraEm.getTime()).toBeGreaterThan(Date.now() + DURACAO_SESSAO * 0.9);
+    expect(res.headers['set-cookie']![0]).toMatch(/session=/);
+    const [s] = await ctx.connection.db.select().from(sessions);
+    expect(s!.expiresAt.getTime()).toBeGreaterThan(Date.now() + SESSION_DURATION * 0.9);
   });
 
-  it('apagar o usuário apaga as sessões dele', async () => {
-    await cadastrar(ctx.app);
-    await ctx.conexao.db.delete(usuarios).where(eq(usuarios.email, 'ana@exemplo.com'));
-    expect(await ctx.conexao.db.select().from(sessoes)).toHaveLength(0);
+  it("deleting the user deletes their sessions", async () => {
+    await register(ctx.app);
+    await ctx.connection.db.delete(users).where(eq(users.email, 'ana@example.com'));
+    expect(await ctx.connection.db.select().from(sessions)).toHaveLength(0);
   });
 });
 
-describe('proteções gerais', () => {
-  it('recusa POST vindo de outro site', async () => {
+describe('general protections', () => {
+  it('refuses a POST coming from another site', async () => {
     const res = await request(ctx.app)
       .post('/api/auth/login')
-      .set('Origin', 'https://site-malicioso.com')
-      .send({ email: 'ana@exemplo.com', senha: 'senha-forte-123' });
+      .set('Origin', 'https://evil-site.com')
+      .send({ email: 'ana@example.com', password: 'strong-password-123' });
     expect(res.status).toBe(403);
   });
 
-  it('aceita POST vindo do próprio front', async () => {
-    const { res } = await cadastrar(ctx.app);
+  it("accepts a POST coming from the store's own front end", async () => {
+    const { res } = await register(ctx.app);
     expect(res.status).toBe(201);
     const login = await request(ctx.app)
       .post('/api/auth/login')
       .set('Origin', APP_URL)
-      .send({ email: 'ana@exemplo.com', senha: 'senha-forte-123' });
+      .send({ email: 'ana@example.com', password: 'strong-password-123' });
     expect(login.status).toBe(200);
   });
 
-  it('json quebrado vira 400 e não 500', async () => {
+  it('broken json becomes 400 and not 500', async () => {
     const res = await request(ctx.app)
       .post('/api/auth/login')
       .set('Content-Type', 'application/json')
@@ -162,9 +162,9 @@ describe('proteções gerais', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rota que não existe dá 404 em json', async () => {
-    const res = await request(ctx.app).get('/api/nada');
+  it('a route that does not exist gives 404 in json', async () => {
+    const res = await request(ctx.app).get('/api/nothing');
     expect(res.status).toBe(404);
-    expect(res.body.erro).toBeDefined();
+    expect(res.body.error).toBeDefined();
   });
 });

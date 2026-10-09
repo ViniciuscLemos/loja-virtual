@@ -1,5 +1,5 @@
 {
-  "name": "loja-virtual",
+  "name": "online-store",
   "private": true,
   "workspaces": [
     "server"

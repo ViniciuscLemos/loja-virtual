@@ -1,31 +1,31 @@
 import cookieParser from 'cookie-parser';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
-import { rotasAdmin } from './admin/rotas.js';
-import { carregarUsuario } from './auth/middlewares.js';
-import { rotasAuth } from './auth/rotas.js';
-import type { Banco } from './db/index.js';
-import { ErroHttp, tratarErros } from './lib/erros.js';
+import { adminRoutes } from './admin/routes.js';
+import { loadUser } from './auth/middlewares.js';
+import { authRoutes } from './auth/routes.js';
+import type { Db } from './db/index.js';
+import { HttpError, handleErrors } from './lib/errors.js';
 
-export interface OpcoesApp {
-  db: Banco;
+export interface AppOptions {
+  db: Db;
   appUrl: string;
-  limiteTentativas?: number;
+  attemptLimit?: number;
 }
 
-// Segunda camada contra CSRF (a primeira é o sameSite do cookie):
-// requisição que muda dados vinda de outro site é recusada.
-function verificarOrigem(appUrl: string) {
+// Second layer against CSRF (the first one is the cookie's sameSite):
+// a request that changes data coming from another site is refused.
+function checkOrigin(appUrl: string) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    const origem = req.get('origin');
-    if (req.method !== 'GET' && req.method !== 'HEAD' && origem && origem !== appUrl) {
-      throw new ErroHttp(403, 'Origem não permitida.');
+    const origin = req.get('origin');
+    if (req.method !== 'GET' && req.method !== 'HEAD' && origin && origin !== appUrl) {
+      throw new HttpError(403, 'Origin not allowed.');
     }
     next();
   };
 }
 
-export function criarApp({ db, appUrl, limiteTentativas = 10 }: OpcoesApp) {
+export function createApp({ db, appUrl, attemptLimit = 10 }: AppOptions) {
   const app = express();
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -33,17 +33,17 @@ export function criarApp({ db, appUrl, limiteTentativas = 10 }: OpcoesApp) {
   app.use(helmet());
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
-  app.use('/api', verificarOrigem(appUrl), carregarUsuario(db));
+  app.use('/api', checkOrigin(appUrl), loadUser(db));
 
-  app.get('/api/saude', (_req, res) => {
+  app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
   });
-  app.use('/api/auth', rotasAuth(db, { limiteTentativas }));
-  app.use('/api/admin', rotasAdmin(db));
+  app.use('/api/auth', authRoutes(db, { attemptLimit }));
+  app.use('/api/admin', adminRoutes(db));
 
   app.use('/api', (_req, res) => {
-    res.status(404).json({ erro: 'Rota não encontrada.' });
+    res.status(404).json({ error: 'Route not found.' });
   });
-  app.use(tratarErros);
+  app.use(handleErrors);
   return app;
 }

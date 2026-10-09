@@ -1,24 +1,22 @@
-import { criarApp } from './app.js';
+import { createApp } from './app.js';
 import { config } from './config.js';
-import { conectarPglite, conectarPostgres } from './db/index.js';
+import { connectPglite, connectPostgres } from './db/index.js';
 
-const conexao = config.DATABASE_URL
-  ? conectarPostgres(config.DATABASE_URL)
-  : conectarPglite(config.PGLITE_DIR);
+const connection = config.DATABASE_URL ? connectPostgres(config.DATABASE_URL) : connectPglite(config.PGLITE_DIR);
 
-await conexao.migrar();
+await connection.migrate();
 
-const app = criarApp({ db: conexao.db, appUrl: config.APP_URL });
-const servidor = app.listen(config.PORT, () => {
-  const banco = config.DATABASE_URL ? 'PostgreSQL' : `PGlite (${config.PGLITE_DIR})`;
-  console.log(`API rodando em http://localhost:${config.PORT} usando ${banco}`);
+const app = createApp({ db: connection.db, appUrl: config.APP_URL });
+const server = app.listen(config.PORT, () => {
+  const database = config.DATABASE_URL ? 'PostgreSQL' : `PGlite (${config.PGLITE_DIR})`;
+  console.log(`API running at http://localhost:${config.PORT} using ${database}`);
 });
 
-function desligar() {
-  servidor.close(async () => {
-    await conexao.fechar();
+function shutdown() {
+  server.close(async () => {
+    await connection.close();
     process.exit(0);
   });
 }
-process.on('SIGINT', desligar);
-process.on('SIGTERM', desligar);
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
