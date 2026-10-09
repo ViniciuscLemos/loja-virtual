@@ -32,8 +32,10 @@ test('a visitor browses, filters and opens a product', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Mugs', exact: true }).click();
   await expect(page).toHaveURL(/category=Mugs/);
+  // waits for the filtered list (2 mugs in the sample data) before reading it,
+  // otherwise it could still read the cards of the unfiltered list
   const cards = page.locator('.product-card');
-  await expect(cards.first()).toContainText('Mugs');
+  await expect(cards).toHaveCount(2);
   for (const text of await cards.allInnerTexts()) expect(text).toContain('Mugs');
 
   await page.getByRole('link', { name: /Classic Coffee Mug/ }).click();
